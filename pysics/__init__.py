@@ -226,7 +226,8 @@ class Sim2D(object):
         
         return odes
 
-    
+def DOF(name):
+    return s.Symbol(name, real=True)
 
 if __name__ == '__main__':
 
