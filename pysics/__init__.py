@@ -4,7 +4,7 @@ from sympy.utilities import lambdify
 import numpy as n
 from numbers import Number
 from tools import *
-from matplotlib.pyplot import *
+
 
 
 class PointMass2D(object):
@@ -82,7 +82,7 @@ class Sim2D(object):
     
 
     def RigidBody(self, name, m, I, r=None, ang=None):
-        RB = RigidBody2D(name,m,I,r)
+        RB = RigidBody2D(name,m,I,r,ang)
         self.bods.append(RB)
         return RB
 
@@ -226,20 +226,23 @@ class Sim2D(object):
         
         return odes
 
+
+
 def DOF(name):
     return s.Symbol(name, real=True)
 
+
+
 if __name__ == '__main__':
 
+    #Single Pendulum
     sim = Sim2D()
     sim.Force(lambda bod: [0, -bod.m*9.81])
-    
     th = s.Symbol('th', real=True)
     pend = sim.PointMass('pend', 2, 0.3*s.Matrix([s.sin(th),-s.cos(th)]))
     pend.place({th:(0.1,0)})
     y = sim.run([0,5,0.001])
+    from matplotlib.pyplot import *
     plot(y['t'],y['th'])
     show()
     
-    #rpend = sim.RigidBody('rpend', 2, 3,
-    #                      0.3*s.Matrix([s.sin(th),-s.cos(th)]), ang=th)
