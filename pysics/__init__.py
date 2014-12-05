@@ -27,22 +27,19 @@ class PointMass2D(object):
         self.places = None
 
 
-    def Force(self, F=None, M=None):
+    def Force(self, F=[0,0], M=0):
         F = Force2D(F,M)
         self.forces.append(F)
-        return F
 
 
     def Gravity(self, g):
-        G = Gravity2D(g)
+        G = Gravity2D(self, g)
         self.forces.append(G)
-        return G
     
 
-    def Drag(self, Cd,  power):
-        D = Drag2D(Cd, power)
+    def Drag(self, LCd,  power):
+        D = Drag2D(self, LCd=LCd, power=power)
         self.forces.append(D)
-        return D
     
 
     def place(self, initial_condition):
@@ -69,22 +66,19 @@ class RigidBody2D(object):
         self.places = None
     
 
-    def Force(self, F=None, M=None):
+    def Force(self, F=[0,0], M=0):
         F = Force2D(F,M)
         self.forces.append(F)
-        return F
 
 
     def Gravity(self, g):
-        G = Gravity2D(g)
+        G = Gravity2D(self, g)
         self.forces.append(G)
-        return G
     
 
     def Drag(self, LCd=None, RCd=None, power=1):
-        D = Drag2D(LCd, RCd, power)
+        D = Drag2D(self, LCd, RCd, power)
         self.forces.append(D)
-        return D
     
 
     def place(self, initial_condition):
@@ -94,60 +88,38 @@ class RigidBody2D(object):
 
 # The force stuff
 
-class Force2D(object):
+def Force2D(F=[0,0], M=0):
     
-    def __init__(self, F=None, M=None):
+    return s.Matrix(list(F) + [M])
+
+
+def Gravity2D(bod, g):
+    return Force2D(F=bod.m * s.Matrix(g))
+
+
+
+def Drag2D(bod, LCd=None, RCd=None, power=1):
         
-        self.F = F
-        self.M = M
-    
-
-    def __call__(self, bod):
-        if self.F is not None:
-            F = self.F(bod)
-        else:
-            F = [0,0]
-
+        #Don't let anything dependent on omega be created if bod
+        #isn't a rigid body.
         try:
-            I = bod.I #Just to test if it has a defined angle
-            if self.M is not None:
-                M = self.M(bod)
-            else:
-                M = 0
-            return s.Matrix(list(F) + [M])
-
+            I = bod.I
         except AttributeError:
-            pass
-        
-        return s.Matrix(F)
-       
+            return Force2D(F= -LCd * bod.v * bod.v.norm()**(power - 1))
 
-
-class Gravity2D(Force2D):
-    
-    def __init__(self, g):
-        super(Gravity2D, self).__init__(lambda bod: bod.m * s.Matrix(g))
-
-
-
-class Drag2D(Force2D):
-    
-    def __init__(self, LCd=None, RCd=None, power=1):
-        
+        #Now we know bod is a rigid body
         if RCd and LCd:
-            super(Drag2D, self).__init__(F=lambda bod: -LCd * bod.v * 
-                                         bod.v.norm()**(power - 1),
-                                         M=lambda bod: -RCd * bod.omega**power)
+            return Force2D(F= - LCd * bod.v * bod.v.norm()**(power - 1),
+                           M= -RCd * bod.omega**power)
 
         elif LCd:
-            super(Drag2D, self).__init__(F=lambda bod: -LCd * bod.v * 
-                                         bod.v.norm()**(power - 1))
+            return Force2D(F= -LCd * bod.v * bod.v.norm()**(power - 1))
 
         elif RCd:
-            super(Drag2D, self).__init__(M=lambda bod: -RCd * bod.omega**power)
+            return Force2D(M= -RCd * bod.omega**power)
         
         else:
-            super(Drag2D, self).__init__()
+            return Force2D()
             
 
 
@@ -194,20 +166,19 @@ class Sim2D(object):
         return RB
 
 
-    def Force(self, F=None, M=None):
-        F = Force2D(F,M)
-        self.forces.append(F)
-        return F
+    def Force(self, F=lambda bod: [0,0], M=lambda bod: 0):
+        #IMPORTANT NOTE: sim.Force takes a lambda function,
+        # Everything else just takes an expression
+        self.forces.append((Force2D,F,M))
+
         
     def Gravity(self, g):
-        G = Gravity2D(g)
-        self.forces.append(G)
-        return G
+        self.forces.append((Gravity2D,g))
+
     
     def Drag(self, LCd=None, RCd=None, power=1):
-        D = Drag2D(LCd, RCd, power)
-        self.forces.append(D)
-        return D
+        self.forces.append((Drag2D,LCd,RCd,power))
+
     
     def place(self, initial_condition):
         self.places = initial_condition
@@ -242,13 +213,28 @@ class Sim2D(object):
         self.dirs = self._gen_free_dirs()
         
         
-        self.F = s.Matrix([0]*len(self.r))
         for force in self.forces:
-            F = []
-            for bod in self.bods:
-                F.extend(force(bod))
-            self.F = self.F + s.Matrix(F)
+            #If it's from force2D, which for generality asks for a function
+            # that generates an expression
+            if force[0] == Force2D:
+                for bod in self.bods:
+                    bod.forces.append(force[0](*[arg(bod) for arg in force[1:]]))
+            else:
+                for bod in self.bods:
+                    bod.forces.append(force[0](bod,*force[1:]))
 
+        self.F = []
+        for bod in self.bods:
+            F = s.Matrix([0]*len(bod.r) + [0])
+            for force in bod.forces:
+                F += force
+            try:
+                I = bod.I
+            except AttributeError:
+                F = s.Matrix(F[0:2])
+            self.F.extend(list(F))
+        self.F = s.Matrix(self.F)
+                
         #Now we write F=Ma in our new coordinate system
         LHS = s.simplify(self.dirs * self.F)
         RHS = s.simplify(self.dirs * self.M * self.a)
