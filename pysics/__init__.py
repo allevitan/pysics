@@ -281,7 +281,8 @@ class Sim2D(object):
         
         dirs = s.Matrix([[0]*len(r)]*len(basis))
         for i,var in enumerate(basis):
-            direction = s.Matrix([s.diff(component, var) for component in r])
+            direction = s.Matrix([s.diff(component, var)
+                                  for component in r])
             dirs[i,:] = direction.transpose()
             
         return dirs
