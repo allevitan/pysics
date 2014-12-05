@@ -39,7 +39,7 @@ class PointMass2D(object):
         return G
     
 
-    def Drag(self, Cd, power):
+    def Drag(self, Cd,  power):
         D = Drag2D(Cd, power)
         self.forces.append(D)
         return D
@@ -81,8 +81,8 @@ class RigidBody2D(object):
         return G
     
 
-    def Drag(self, Cd, power):
-        D = Drag2D(Cd, power)
+    def Drag(self, LCd=None, RCd=None, power=1):
+        D = Drag2D(LCd, RCd, power)
         self.forces.append(D)
         return D
     
@@ -132,10 +132,23 @@ class Gravity2D(Force2D):
 
 class Drag2D(Force2D):
     
-    def __init__(self, Cd, power):
+    def __init__(self, LCd=None, RCd=None, power=1):
         
-        super(Drag2D, self).__init__(lambda bod: -Cd * bod.v * 
-                                        bod.v.norm()**(power - 1))
+        if RCd and LCd:
+            super(Drag2D, self).__init__(F=lambda bod: -LCd * bod.v * 
+                                         bod.v.norm()**(power - 1),
+                                         M=lambda bod: -RCd * bod.omega**power)
+
+        elif LCd:
+            super(Drag2D, self).__init__(F=lambda bod: -LCd * bod.v * 
+                                         bod.v.norm()**(power - 1))
+
+        elif RCd:
+            super(Drag2D, self).__init__(M=lambda bod: -RCd * bod.omega**power)
+        
+        else:
+            super(Drag2D, self).__init__()
+            
 
 
 
@@ -191,8 +204,8 @@ class Sim2D(object):
         self.forces.append(G)
         return G
     
-    def Drag(self, Cd, power):
-        D = Drag2D(Cd, power)
+    def Drag(self, LCd=None, RCd=None, power=1):
+        D = Drag2D(LCd, RCd, power)
         self.forces.append(D)
         return D
     

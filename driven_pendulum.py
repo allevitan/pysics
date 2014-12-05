@@ -3,7 +3,7 @@ from matplotlib.pyplot import *
 
 sim = Sim2D()
 sim.Gravity([0,-9.81])
-sim.Drag(1,1)
+sim.Drag(LCd=1,power=1)
 sim.Force(lambda bod: [s.cos(t),0])
 
 
