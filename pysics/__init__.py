@@ -290,11 +290,11 @@ class Sim2D(object):
     
     def _gen_odes(self):
         
-        input_vars = self.basis + self.dbasis
+        input_vars = [t] + self.basis + self.dbasis
         divider = len(self.basis) #between basis and dbasis
         
         #the replacement is done to avoid problems with backslashes
-        newvars = s.symbols(['x_'+str(i+1) for i in range(0,len(input_vars))])
+        newvars = s.symbols(['x_'+str(i) for i in range(0,len(input_vars))])
         #the flipping of the replacement vectors is to avoid problems with
         #variables being replaced before their derivatives
         nRHMat = lambdify(newvars, self.RHMat.subs(zip(input_vars[::-1],newvars[::-1]))
@@ -302,9 +302,8 @@ class Sim2D(object):
         nLHS = lambdify(newvars, self.LHS.subs(zip(input_vars[::-1],newvars[::-1]))
                         ,modules='numpy')
 
-
         def odes(t,y):
-            ddvs = n.linalg.inv(nRHMat(*y)) * nLHS(*y)
+            ddvs = n.linalg.inv(nRHMat(t,*y)) * nLHS(t,*y)
             return n.hstack((y[divider:],n.ravel(ddvs)))
         
         return odes
