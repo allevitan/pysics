@@ -4,7 +4,7 @@ from matplotlib.pyplot import *
 sim = Sim2D()
 sim.Force(lambda bod: [0, -bod.m*9.81])
 
-th = DOF('th')
+th = sim.DOF('th')
 pend = sim.PointMass('pend', 2, 0.3*s.Matrix([s.sin(th),-s.cos(th)]))
 pend.place({th:(0.1,0)})
 

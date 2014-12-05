@@ -4,8 +4,10 @@ from sympy.utilities import lambdify
 import numpy as n
 from numbers import Number
 from tools import *
+from IPython.display import display as disp
 
-
+s.init_printing()
+t = s.Symbol('t')
 
 class PointMass2D(object):
     
@@ -73,8 +75,21 @@ class Sim2D(object):
     def __init__(self):
         self.bods = []
         self.forces = []
+        self.basis = []
         self.places = {}
     
+
+    def DOF(self, *args):
+        if len(args) == 1:
+            f = s.Function(args[0])(t)
+            self.basis.append(f)
+            return f
+        else:
+            fs = tuple(s.Function(name)(t) for name in args)
+            self.basis.extend(list(fs))
+            return fs
+
+
 
     def PointMass(self, name, m, r=None):
         PM = PointMass2D(name,m,r)
@@ -117,11 +132,13 @@ class Sim2D(object):
         self.M = M
 
         
-        self.basis = list(extract_variables(self.r))
-        self.dbasis = [s.Symbol('d' + var.name) for var in self.basis]
-        self.ddbasis = [s.Symbol('dd' + var.name) for var in self.basis]
+        #self.basis = list(extract_variables(self.r))
+        self.dbasis = [s.diff(dof, t) for dof in self.basis]
+        self.ddbasis = [s.diff(dof, t, 2) for dof in self.basis]
         
-        self.v, self.a = self._gen_derivs()
+        self.v = s.Matrix([s.diff(component, t) for component in self.r])
+        self.a = s.Matrix([s.diff(component, t) for component in self.v])
+        
         self.dirs = self._gen_free_dirs()
         
         self.F = s.Matrix([0]*len(self.r))
@@ -134,7 +151,7 @@ class Sim2D(object):
         #Now we write F=Ma in our new coordinate system
         LHS = s.simplify(self.dirs * self.F)
         RHS = s.simplify(self.dirs * self.M * self.a)
-        
+
         #And put it into Vec = Mat*Diffs + Vec form
         self.dds = s.Matrix(self.ddbasis)
         self.RHMat = s.Matrix([[0]*len(self.basis)]*len(self.basis))
@@ -161,8 +178,8 @@ class Sim2D(object):
         init_pos = []
         init_vel = []
         for bvar, dbvar in zip(self.basis,self.dbasis):
-            init_pos.append((bvar.name, places[bvar][0]))
-            init_vel.append((dbvar.name, places[bvar][1]))
+            init_pos.append((str(type(bvar)), places[bvar][0]))
+            init_vel.append(('d' + str(type(dbvar)), places[bvar][1]))
         inits = init_pos + init_vel
         
         print('Simulation Compiled, now beginning to run')
@@ -170,33 +187,6 @@ class Sim2D(object):
         return odesolve(self.odes, inits, time, events)
         
 
-    def _gen_derivs(self):
-    
-        r = self.r
-        locs = self.basis
-        vels = self.dbasis
-        accs = self.ddbasis
-        
-        t = s.Symbol('t')
-        
-        v = s.Matrix([0]*len(r))
-        for i in range(0,len(locs)):
-            subbed = r.subs(locs[i],vels[i]*t)
-            diffed = s.Matrix([s.diff(component, t) for component in subbed])
-            v += diffed.subs(vels[i]*t,locs[i])
-
-        a = s.Matrix([0]*len(r))
-        for i in range(0,len(locs)):
-            subbed = v.subs(locs[i],vels[i]*t)
-            diffed = s.Matrix([s.diff(component, t) for component in subbed])
-            a += diffed.subs(vels[i]*t,locs[i])
-            subbed = v.subs(vels[i],accs[i]*t)
-            diffed = s.Matrix([s.diff(component, t) for component in subbed])
-            a += diffed.subs(accs[i]*t,vels[i])
-        
-        return (v,a)
-    
-    
     def _gen_free_dirs(self):
         
         r = self.r
@@ -207,7 +197,8 @@ class Sim2D(object):
             direction = s.Matrix([s.diff(component, var) for component in r])
             dirs[i,:] = direction.transpose()
             
-            #Use if you want to have the directions normalized
+            # Use if you want to have the directions normalized
+            #
             # mag = s.sqrt(simplify(direction.dot(direction)))
             # unit = s.simplify(direction/mag)
             # dirs[i,:] = unit.transpose()
@@ -220,12 +211,15 @@ class Sim2D(object):
         input_vars = self.basis + self.dbasis
         divider = len(self.basis) #between basis and dbasis
         
-        #this is done to avoid problems with backslashes
+        #the replacement is done to avoid problems with backslashes
         newvars = s.symbols(['x_'+str(i+1) for i in range(0,len(input_vars))])
-        nRHMat = lambdify(newvars, self.RHMat.subs(zip(input_vars,newvars))
+        #the flipping of the replacement vectors is to avoid problems with
+        #variables being replaced before their derivatives
+        nRHMat = lambdify(newvars, self.RHMat.subs(zip(input_vars[::-1],newvars[::-1]))
                         ,modules='numpy')
-        nLHS = lambdify(newvars, self.LHS.subs(zip(input_vars,newvars))
+        nLHS = lambdify(newvars, self.LHS.subs(zip(input_vars[::-1],newvars[::-1]))
                         ,modules='numpy')
+
 
         def odes(t,y):
             ddvs = n.linalg.inv(nRHMat(*y)) * nLHS(*y)
@@ -234,12 +228,6 @@ class Sim2D(object):
         return odes
 
 
-
-def DOF(*args):
-    if len(args) == 1:
-        return s.Symbol(args[0], real=True)
-    else:
-        return tuple(s.Symbol(name, real=True) for name in args)
 
 
 print('Pysics imported! You now can simulate rigid body dynamics.')
