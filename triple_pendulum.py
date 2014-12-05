@@ -3,7 +3,7 @@ from matplotlib.pyplot import *
 
 
 sim = Sim2D()
-sim.Force(lambda bod: [0, -bod.m*9.81])
+sim.Gravity([0,-9.81])
 
 th1,th2,th3 = sim.DOF('th1','th2','th3')
 pend1 = sim.PointMass('pend1', 1, s.Matrix([s.sin(th1),-s.cos(th1)]))

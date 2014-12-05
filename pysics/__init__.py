@@ -5,20 +5,45 @@ import numpy as n
 from numbers import Number
 from tools import *
 from IPython.display import display as disp
-
 s.init_printing()
+
+
 t = s.Symbol('t')
+
+
+#The Body Stuff
 
 class PointMass2D(object):
     
     def __init__(self, name, m, r):
         self.name = name
         self.m = m
-        self.inits = None
+
         self.r = s.Matrix(r)
-        self.basis = list(extract_variables(self.r))
+        self.v = s.Matrix([s.diff(component, t) for component in self.r])
+        self.a = s.Matrix([s.diff(component, t) for component in self.v])
+
+        self.forces = []
         self.places = None
 
+
+    def Force(self, F=None, M=None):
+        F = Force2D(F,M)
+        self.forces.append(F)
+        return F
+
+
+    def Gravity(self, g):
+        G = Gravity2D(g)
+        self.forces.append(G)
+        return G
+    
+
+    def Drag(self, Cd, power):
+        D = Drag2D(Cd, power)
+        self.forces.append(D)
+        return D
+    
 
     def place(self, initial_condition):
         self.places = initial_condition
@@ -31,15 +56,43 @@ class RigidBody2D(object):
         self.name = name
         self.m = m
         self.I = I
+
         self.r = s.Matrix(r)
+        self.v = s.Matrix([s.diff(component, t) for component in self.r])
+        self.a = s.Matrix([s.diff(component, t) for component in self.v])
+
         self.ang = ang
+        self.omega = s.diff(self.ang, t)
+        self.alpha = s.diff(self.omega, t)
+
+        self.forces = []
         self.places = None
     
+
+    def Force(self, F=None, M=None):
+        F = Force2D(F,M)
+        self.forces.append(F)
+        return F
+
+
+    def Gravity(self, g):
+        G = Gravity2D(g)
+        self.forces.append(G)
+        return G
     
+
+    def Drag(self, Cd, power):
+        D = Drag2D(Cd, power)
+        self.forces.append(D)
+        return D
+    
+
     def place(self, initial_condition):
         self.places = initial_condition
 
 
+
+# The force stuff
 
 class Force2D(object):
     
@@ -68,7 +121,26 @@ class Force2D(object):
         
         return s.Matrix(F)
        
- 
+
+
+class Gravity2D(Force2D):
+    
+    def __init__(self, g):
+        super(Gravity2D, self).__init__(lambda bod: bod.m * s.Matrix(g))
+
+
+
+class Drag2D(Force2D):
+    
+    def __init__(self, Cd, power):
+        
+        super(Drag2D, self).__init__(lambda bod: -Cd * bod.v * 
+                                        bod.v.norm()**(power - 1))
+
+
+
+#The Sim Stuff
+
 
 class Sim2D(object):
     
@@ -76,18 +148,24 @@ class Sim2D(object):
         self.bods = []
         self.forces = []
         self.basis = []
+        self.dbasis = []
+        self.ddbasis = []
         self.places = {}
     
 
     def DOF(self, *args):
         if len(args) == 1:
-            f = s.Function(args[0])(t)
-            self.basis.append(f)
-            return f
+            dof = s.Function(args[0])(t)
+            self.basis.append(dof)
+            self.dbasis.append(s.diff(dof,t))
+            self.ddbasis.append(s.diff(dof, t, 2))
+            return dof
         else:
-            fs = tuple(s.Function(name)(t) for name in args)
-            self.basis.extend(list(fs))
-            return fs
+            dofs = [s.Function(name)(t) for name in args]
+            self.basis.extend(dofs)
+            self.dbasis.extend([s.diff(dof, t) for dof in dofs])
+            self.ddbasis.extend([s.diff(dof, t, 2) for dof in dofs])
+            return tuple(dofs)
 
 
 
@@ -107,39 +185,49 @@ class Sim2D(object):
         F = Force2D(F,M)
         self.forces.append(F)
         return F
-
+        
+    def Gravity(self, g):
+        G = Gravity2D(g)
+        self.forces.append(G)
+        return G
+    
+    def Drag(self, Cd, power):
+        D = Drag2D(Cd, power)
+        self.forces.append(D)
+        return D
+    
     def place(self, initial_condition):
         self.places = initial_condition
 
     def compile(self):
         
-        self.r = []
+        self.r, self.v, self.a  = [], [], []
         self.M = []
 
         for bod in self.bods:
             self.r.extend(list(bod.r))
+            self.v.extend(list(bod.v))
+            self.a.extend(list(bod.a))
             self.M.extend([bod.m]*len(bod.r))
             try:
                 self.r.append(bod.ang)
+                self.v.append(bod.omega)
+                self.a.append(bod.alpha)
                 self.M.append(bod.I)
             except AttributeError:
                 pass
 
         self.r = s.Matrix(self.r)
+        self.v = s.Matrix(self.v)
+        self.a = s.Matrix(self.a)
         M = s.Matrix([[0]*len(self.r)]*len(self.r))
         for i,m in enumerate(self.M):
             M[i,i] = m
         self.M = M
 
         
-        #self.basis = list(extract_variables(self.r))
-        self.dbasis = [s.diff(dof, t) for dof in self.basis]
-        self.ddbasis = [s.diff(dof, t, 2) for dof in self.basis]
-        
-        self.v = s.Matrix([s.diff(component, t) for component in self.r])
-        self.a = s.Matrix([s.diff(component, t) for component in self.v])
-        
         self.dirs = self._gen_free_dirs()
+        
         
         self.F = s.Matrix([0]*len(self.r))
         for force in self.forces:
@@ -147,7 +235,7 @@ class Sim2D(object):
             for bod in self.bods:
                 F.extend(force(bod))
             self.F = self.F + s.Matrix(F)
-        
+
         #Now we write F=Ma in our new coordinate system
         LHS = s.simplify(self.dirs * self.F)
         RHS = s.simplify(self.dirs * self.M * self.a)
@@ -197,12 +285,6 @@ class Sim2D(object):
             direction = s.Matrix([s.diff(component, var) for component in r])
             dirs[i,:] = direction.transpose()
             
-            # Use if you want to have the directions normalized
-            #
-            # mag = s.sqrt(simplify(direction.dot(direction)))
-            # unit = s.simplify(direction/mag)
-            # dirs[i,:] = unit.transpose()
-        
         return dirs
     
     

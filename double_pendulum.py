@@ -3,7 +3,7 @@ from matplotlib.pyplot import *
 
 #Create the simulation object and define gravity
 sim = Sim2D()
-sim.Force(lambda bod: [0, -bod.m*9.81])
+sim.Gravity([0, -9.81])
 
 #Define the constraints
 th1, th2 = sim.DOF('th1','th2')
