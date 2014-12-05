@@ -73,6 +73,7 @@ class Sim2D(object):
     def __init__(self):
         self.bods = []
         self.forces = []
+        self.places = {}
     
 
     def PointMass(self, name, m, r=None):
@@ -92,6 +93,8 @@ class Sim2D(object):
         self.forces.append(F)
         return F
 
+    def place(self, initial_condition):
+        self.places = initial_condition
 
     def compile(self):
         
@@ -150,15 +153,19 @@ class Sim2D(object):
 
     def run(self, time, events=None):
         self.compile()
-
+        
         places = dict(sum([bod.places.items()
-                           for bod in self.bods if bod.places], []))
+                           for bod in self.bods + [self]
+                           if bod.places], []))
+            
         init_pos = []
         init_vel = []
         for bvar, dbvar in zip(self.basis,self.dbasis):
             init_pos.append((bvar.name, places[bvar][0]))
             init_vel.append((dbvar.name, places[bvar][1]))
         inits = init_pos + init_vel
+        
+        print('Simulation Compiled, now beginning to run')
         
         return odesolve(self.odes, inits, time, events)
         
@@ -228,9 +235,14 @@ class Sim2D(object):
 
 
 
-def DOF(name):
-    return s.Symbol(name, real=True)
+def DOF(*args):
+    if len(args) == 1:
+        return s.Symbol(args[0], real=True)
+    else:
+        return tuple(s.Symbol(name, real=True) for name in args)
 
+
+print('Pysics imported! You now can simulate rigid body dynamics.')
 
 
 if __name__ == '__main__':
