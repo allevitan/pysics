@@ -4,7 +4,7 @@ from matplotlib.pyplot import *
 w = 3 #rad/s
 R = 0.5 #m
 
-#Create the simulation object and define gravity
+#Create the simulation object
 sim = Sim2D()
 
 #Define the constraints
