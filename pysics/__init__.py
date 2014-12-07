@@ -247,11 +247,11 @@ class Sim2D(object):
         self.forces.append((Gravity2D,g))
 
     
-    def Drag(self, LCd=None, RCd=None, power=1):
+    def Drag(self, TCd=None, RCd=None, power=1):
         """Convenience function that adds drag to every body in the
         simulation."""
         
-        self.forces.append((Drag2D,LCd,RCd,power))
+        self.forces.append((Drag2D,TCd,RCd,power))
 
     
     def place(self, initial_condition):
