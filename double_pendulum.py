@@ -20,7 +20,13 @@ sim.place({th1: (n.pi/3,0), th2: (n.pi/4,0)})
 #And simulate! Badabing badaboom
 y = sim.run([0,5,0.01])
 
+
 #See what we've created
+plot(y['t'],y['KE'])
+plot(y['t'],y['PE'])
+plot(y['t'],y['E'])
+figure()
+
 plot(y['t'],y['th1'])
 plot(y['t'],y['th2'])
 show()

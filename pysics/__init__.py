@@ -41,11 +41,27 @@ class PointMass2D(object):
         self.r = s.Matrix(r)
         self.v = s.Matrix([s.diff(component, t) for component in self.r])
         self.a = s.Matrix([s.diff(component, t) for component in self.v])
-
+        self.U = 0
+        
         self.forces = []
+        self.potentials = []
         self.places = None
     
+
+    def Potential(self, U):
+        """Adds an arbitrary potential to the rigid body. Syntax
+        is the same as syntax for creation of a Potential2D"""
+        U = Potential2D(U)
+        self.potentials.append(U)
     
+    
+    def Gravity(self, g):
+        """A convenience method to add gravity to the point mass.
+        """
+        G = Gravity2D(self, g)
+        self.potentials.append(G)
+    
+
     def Force(self, F=[0,0], M=0):
         """Adds an arbitrary force to the point mass. Syntax
         is the same as the syntax for creation of a Force2D.
@@ -53,13 +69,6 @@ class PointMass2D(object):
         F = Force2D(F,M)
         self.forces.append(F)
 
-
-    def Gravity(self, g):
-        """A convenience method to add gravity to the point mass.
-        """
-        G = Gravity2D(self, g)
-        self.forces.append(G)
-    
 
     def Drag(self, TCd,  power):
         """A convenience method to add drag to the point mass.
@@ -92,13 +101,29 @@ class RigidBody2D(object):
         self.r = s.Matrix(r)
         self.v = s.Matrix([s.diff(component, t) for component in self.r])
         self.a = s.Matrix([s.diff(component, t) for component in self.v])
+        self.U = 0
 
         self.ang = ang
         self.omega = s.diff(self.ang, t)
         self.alpha = s.diff(self.omega, t)
 
         self.forces = []
+        self.potentials = []
         self.places = None
+    
+    
+    def Potential(self, U):
+        """Adds an arbitrary potential to the rigid body. Syntax
+        is the same as syntax for creation of a Potential2D"""
+        U = Potential2D(U)
+        self.potentials.append(U)
+    
+
+    def Gravity(self, g):
+        """A convenience method to add gravity to the rigid body.
+         """
+        G = Gravity2D(self, g)
+        self.potentials.append(G)
     
 
     def Force(self, F=[0,0], M=0):
@@ -108,13 +133,6 @@ class RigidBody2D(object):
         F = Force2D(F,M)
         self.forces.append(F)
 
-
-    def Gravity(self, g):
-        """A convenience method to add gravity to the rigid body.
-         """
-        G = Gravity2D(self, g)
-        self.forces.append(G)
-    
 
     def Drag(self, TCd=None, RCd=None, power=1):
         """A convenience method to add drag to the point mass.
@@ -133,6 +151,22 @@ class RigidBody2D(object):
 #
 
 
+def Potential2D(U):
+    """Returns a general potential energy function. Forces that
+    can be phrased as potentials should be to aid the program in
+    its potential energy calculation. Takes:
+    U: The potential as a function of the body's position and angle"""
+    return U
+    
+
+
+def Gravity2D(bod, g):
+    """A convenience to generate gravitational forces. Takes:
+    g: acceleration due to gravity"""
+    return Potential2D(U= -bod.r.dot(bod.m * s.Matrix(g)))
+
+
+
 def Force2D(F=[0,0], M=0):
     """Returns a general force and/or moment. Takes:
     F: the force as a function of the simulation's degrees
@@ -140,13 +174,6 @@ def Force2D(F=[0,0], M=0):
     M: the moment as a function of the simulation's degrees
     of freedom"""
     return s.Matrix(list(F) + [M])
-
-
-
-def Gravity2D(bod, g):
-    """A convenience to generate gravitational forces. Takes:
-    g: acceleration due to gravity"""
-    return Force2D(F=bod.m * s.Matrix(g))
 
 
 
@@ -188,6 +215,7 @@ class Sim2D(object):
     def __init__(self):
         self.bods = []
         self.forces = []
+        self.potentials = []
         self.basis = []
         self.dbasis = []
         self.ddbasis = []
@@ -229,24 +257,34 @@ class Sim2D(object):
         self.bods.append(RB)
         return RB
 
-
-    def Force(self, F=lambda bod: [0,0], M=lambda bod: 0):
+    
+    def Potential(self, U=lambda bod: 0):
         """Creates a force that acts on all bodies in the simulation.
-        IMPORTANT NOTE: sim.Force lambda functions that take in the
-        body to be acted on and return the appropriate force.
+        IMPORTANT NOTE: sim.Potential takes lambda functions that
+        take in the body to be acted on and return the appropriate force.
         For example:
-        sim.Force(F=lambda bod: [0, -bod.m * 9,81])
+        sim.Potential(lambda bod: bod.r[1] * bod.m * 9.81])
         would add gravity to the simulation"""
-        self.forces.append((Force2D,F,M))
-
-        
+        self.potentials.append((Potential2D, U))
+    
+    
     def Gravity(self, g):
         """Convenience function that adds gravity to the simulation.
         Takes:
         g: the acceleration due to gravity (i.e. [0, -9.81])"""
-        self.forces.append((Gravity2D,g))
+        self.potentials.append((Gravity2D,g))
 
     
+    def Force(self, F=lambda bod: [0,0], M=lambda bod: 0):
+        """Creates a force that acts on all bodies in the simulation.
+        IMPORTANT NOTE: sim.Force takes lambda functions that take in
+        the body to be acted on and return the appropriate force.
+        For example:
+        sim.Force(F=lambda bod: [0, -bod.m * 9.81])
+        would add gravity to the simulation"""
+        self.forces.append((Force2D,F,M))
+
+        
     def Drag(self, TCd=None, RCd=None, power=1):
         """Convenience function that adds drag to every body in the
         simulation."""
@@ -319,37 +357,50 @@ class Sim2D(object):
             
         
         # Now we compile all the forces and moments into a "system 
-        # force vector". First, we generate body-specific forces from
-        # each system force, and then we compile the body-specific
-        # forces
-        for force in self.forces:
-            #If it's from force2D, which for generality asks for a function
-            # that generates an expression
-            if force[0] == Force2D:
-                for bod in self.bods:
-                    bod.forces.append(force[0](*[arg(bod) for arg in force[1:]]))
-            else:
-                for bod in self.bods:
-                    bod.forces.append(force[0](bod,*force[1:]))
-        self.forces = [] #clear forces in case the sim is run twice
-        
+        # force vector", and calculate the system's potential energy.
         self.F = []
+        self.U = 0
         for bod in self.bods:
+            for force in self.forces:
+                if force[0] == Force2D:
+                    bod.forces.append(force[0](*[arg(bod) for arg in force[1:]]))
+                else:
+                    bod.forces.append(force[0](bod,*force[1:]))
+
             F = s.Matrix([0]*len(bod.r) + [0])
             for force in bod.forces:
                 F += force
+
+            for potential in self.potentials:
+                if potential[0] == Potential2D:
+                    bod.potentials.append(potential[0](potential[1](bod)))
+                else:
+                    bod.potentials.append(potential[0](bod,potential[1]))
+            
+            bod.U = 0
+            for potential in bod.potentials:
+                bod.U += potential
+                self.U += potential
+
             try:
                 I = bod.I
             except AttributeError:
+                #Make force a vector of length 2 if bod is a point mass
                 F = s.Matrix(F[0:2])
             self.F.extend(list(F))
+
         self.F = s.Matrix(self.F)
         
-        
+        # Now, we generate the equations of motion. This is a cross between
+        # Lagrange's equations for the conservative forces and my
+        # own special sauce for the nonconservative forces.
         # Now we write F=d(mv)/dt in our new coordinate system LHS is the
         # F part, RHS is the d(mv) part.
-        LHS = s.simplify(self.dirs * self.F)
+        ULHS = s.Matrix([s.diff(self.U, q) for q in self.basis])
+        NLHS = s.simplify(self.dirs * self.F)
+        LHS = NLHS - ULHS
         RHS = s.simplify(self.dirs * (self.M * self.a + self.dM * self.v)) 
+        
         
         # And put it into Vec = Mat*Diffs + Vec form
         self.dds = s.Matrix(self.ddbasis)
@@ -402,6 +453,13 @@ class Sim2D(object):
         self.nM = lambdify(newvars,
                            self.M.subs(zip(input_vars[::-1],newvars[::-1])),
                            modules='numpy')
+        self.nU = []
+        for bod in self.bods:
+            nU = lambdify(newvars,
+                           bod.U.subs(zip(input_vars[::-1],newvars[::-1])),
+                           modules='numpy')
+            self.nU.append(nU)
+
         
         def odes(t,y):
             ddvs = n.linalg.inv(nRHMat(t,*y)) * nLHS(t,*y)
@@ -428,7 +486,7 @@ class Sim2D(object):
         init_vel = []
         for bvar, dbvar in zip(self.basis,self.dbasis):
             init_pos.append((str(type(bvar)), places[bvar][0]))
-            init_vel.append(('d' + str(type(dbvar)), places[bvar][1]))
+            init_vel.append(('d' + str(type(bvar)), places[bvar][1]))
         inits = init_pos + init_vel
         
         print('Simulation Compiled, now beginning to run')
@@ -450,11 +508,18 @@ class Sim2D(object):
         
         i = 0
         self.y['KE'] = n.zeros(len(self.y['t']))
-        for bod in self.bods:
+        self.y['PE'] = n.zeros(len(self.y['t']))
+        self.y['E'] = n.zeros(len(self.y['t']))
+        for bod, nU in zip(self.bods, self.nU):
             self.y['r_'+bod.name] = [n.array(r[i]),n.array(r[i+1])]
             self.y['v_'+bod.name] = [n.array(v[i]),n.array(v[i+1])]
             self.y['KE_'+bod.name] = 0.5 * n.array(M[i]) * \
                                      (n.array(v[i])**2 + n.array(v[i+1])**2)
+            self.y['PE_'+bod.name] = n.array([nU(*value)
+                                              for value 
+                                              in zip(*values)])
+            self.y['E_'+bod.name] = self.y['KE_'+bod.name] \
+                                    + self.y['PE_'+bod.name]
             i = i+2
             
             try:
@@ -467,6 +532,8 @@ class Sim2D(object):
                 pass
             
             self.y['KE'] += self.y['KE_'+bod.name]
+            self.y['PE'] += self.y['PE_'+bod.name]
+            self.y['E'] += self.y['E_'+bod.name]
                 
         return self.y
 

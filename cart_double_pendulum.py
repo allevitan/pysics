@@ -15,7 +15,7 @@ x, th1, th2 = sim.DOF('x','th1','th2')
 cart = sim.PointMass('cart', mc, [x,0])
 p1 = sim.PointMass('p1', mp, cart.r + r*s.Matrix([s.sin(th1),-s.cos(th1)]))
 p2 = sim.PointMass('p2', mp, p1.r + r*s.Matrix([s.sin(th2),-s.cos(th2)]))
-sim.Drag(TCd=0.02,power=2)
+#sim.Drag(TCd=0.02,power=2)
 
 sim.place({x: (0,0), th1: (1,0), th2: (0.5,0)})
 
@@ -35,6 +35,7 @@ plot((y['r_p1'][0][-1],y['r_p2'][0][-1]),
 title('Double Pendulum on a Track with Drag')
 ylim([-2,0.2])
 xlim([-0.4,1.8])
+figure()
 
 
 #plot(y['t'],y['x'])
