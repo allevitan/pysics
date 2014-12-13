@@ -10,8 +10,8 @@ r1 = 0.4*s.Matrix([s.sin(th1),-s.cos(th1)])
 r2 = r1 + 0.3*s.Matrix([s.sin(th2),-s.cos(th2)])
 
 #And make the objects in the simulation
-pend1 = sim.RigidBody('pend1', 1, 0.3, r1, th1)
-pend2= sim.RigidBody('pend2', 0.7, 0.15, r2, th2)
+pend1 = sim.RigidBody('pend1', m=1, I=0.3, r=r1, ang=th1)
+pend2= sim.RigidBody('pend2', m=0.7, I=0.15, r=r2, ang=th2)
 #sim.Drag(TCd=0.1, power=2)
 
 #Set the initial conditions

@@ -1,6 +1,8 @@
 ## Synopsis
 
-Pysics is a simple python module capable of simulating arbitrary 2D multibody mechanical systems obeying holonomic constraints, including systems with time-dependent constraints and forcing. It was written as a final project for the sophomore-level Dynamics class at Olin College of Engineering. Included in this repository are approximately 10 example simulations demonstrating the range of systems that pysics is capable of simulating.
+Pysics is a simple python module capable of simulating arbitrary 2D multibody mechanical systems obeying holonomic constraints, including systems with time-dependent constraints and forcing. It was written as a final project for the sophomore-level Dynamics class at Olin College of Engineering.
+
+Included in this repository are approximately 10 example simulations demonstrating the range of systems that pysics is capable of simulating.
 
 ## Dependencies
 
@@ -30,8 +32,8 @@ r1 = 0.4*s.Matrix([s.sin(th1),-s.cos(th1)])
 r2 = r1 + 0.3*s.Matrix([s.sin(th2),-s.cos(th2)])
 
 #And define the bodies and forces
-pend1 = sim.RigidBody('pend1', 1, 0.3, r1, th1)
-pend2= sim.RigidBody('pend2', 0.7, 0.15, r2, th2)
+pend1 = sim.RigidBody('pend1', m=1, I=0.3, r=r1, ang=th1)
+pend2= sim.RigidBody('pend2', m=0.7, I=0.15, r=r2, ang=th2)
 sim.Drag(TCd=0.1, power=2)
                       
 #Set the initial conditions
@@ -40,7 +42,7 @@ sim.place({th1: (n.pi/3,0), th2: (n.pi/4,0)})
 #And simulate! Badabing badaboom
 y = sim.run([0,5,0.01])
 
-#Now we generate some figures to look at
+#Finally, generate figures describing the system
 sim.analyze()
 ```
 
