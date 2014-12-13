@@ -11,13 +11,5 @@ sim.place({th:(0.1,0)})
 y = sim.run([0,5,0.01])
 
 
-
-plot(y['t'],y['KE'])
-plot(y['t'],y['PE'])
-plot(y['t'],y['E'])
-figure()
-
-plot(y['t'],y['th'])
-
-show()
+sim.analyze()
 

@@ -35,7 +35,7 @@ plot((y['r_p1'][0][-1],y['r_p2'][0][-1]),
 title('Double Pendulum on a Track with Drag')
 ylim([-2,0.2])
 xlim([-0.4,1.8])
-figure()
+#figure()
 
 
 #plot(y['t'],y['x'])

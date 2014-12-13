@@ -1,5 +1,4 @@
 from pysics import *
-from matplotlib.pyplot import *
 
 w = 3 #rad/s
 R = 0.5 #m
@@ -16,11 +15,9 @@ r = R*s.Matrix([s.sin(w*t),-s.cos(w*t)]) + \
 pend = sim.PointMass('pend', 1, r)
                       
 #Set the initial conditions
-sim.place({th: (0.1, 0.01)})
+sim.place({th: (1, 0.01)})
 
 #And simulate! Badabing badaboom
 y = sim.run([0,5,0.01])
 
-#See what we've created
-plot(y['t'],y['th'])
-show()
+sim.analyze()

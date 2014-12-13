@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 from pysics import *
-from matplotlib.pyplot import *
 
 h = 1
 B = 0.3
@@ -16,8 +15,4 @@ sim.place({x: (0.01,0)})
 
 y = sim.run([0,8,0.01], lambda y: y[0] > L)
 
-
-#plot(y['t'],y['x'])
-plot(*y['r_cart'])
-show()
-
+sim.analyze()

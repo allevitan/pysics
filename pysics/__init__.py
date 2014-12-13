@@ -4,6 +4,7 @@ from sympy.utilities import lambdify
 import numpy as n
 from numbers import Number
 from tools import *
+import matplotlib.pyplot as p
 from IPython.display import display as disp
 s.init_printing()
 
@@ -258,7 +259,7 @@ class Sim2D(object):
         return RB
 
     
-    def Potential(self, U=lambda bod: 0):
+    def Potential(self, U=0):
         """Creates a force that acts on all bodies in the simulation.
         IMPORTANT NOTE: sim.Potential takes lambda functions that
         take in the body to be acted on and return the appropriate force.
@@ -360,6 +361,9 @@ class Sim2D(object):
         # force vector", and calculate the system's potential energy.
         self.F = []
         self.U = 0
+        for potential in self.potentials:
+            if potential[0] == Potential2D:
+                self.U += potential[1]
         for bod in self.bods:
             for force in self.forces:
                 if force[0] == Force2D:
@@ -371,16 +375,11 @@ class Sim2D(object):
             for force in bod.forces:
                 F += force
 
-            for potential in self.potentials:
-                if potential[0] == Potential2D:
-                    bod.potentials.append(potential[0](potential[1](bod)))
-                else:
-                    bod.potentials.append(potential[0](bod,potential[1]))
-            
             bod.U = 0
-            for potential in bod.potentials:
-                bod.U += potential
-                self.U += potential
+            for potential in self.potentials:
+                if potential[0] != Potential2D:
+                    bod.U += potential[0](bod,potential[1])
+                    self.U += potential[0](bod,potential[1])
 
             try:
                 I = bod.I
@@ -455,9 +454,14 @@ class Sim2D(object):
                            modules='numpy')
         self.nU = []
         for bod in self.bods:
-            nU = lambdify(newvars,
-                           bod.U.subs(zip(input_vars[::-1],newvars[::-1])),
-                           modules='numpy')
+            if bod.U == 0:
+                def zilch(*args):
+                    return 0
+                nU = zilch
+            else:
+                nU = lambdify(newvars,
+                              bod.U.subs(zip(input_vars[::-1],newvars[::-1])),
+                              modules='numpy')
             self.nU.append(nU)
 
         
@@ -518,24 +522,66 @@ class Sim2D(object):
             self.y['PE_'+bod.name] = n.array([nU(*value)
                                               for value 
                                               in zip(*values)])
-            self.y['E_'+bod.name] = self.y['KE_'+bod.name] \
-                                    + self.y['PE_'+bod.name]
             i = i+2
             
             try:
                 I = bod.I
                 self.y['ang_'+bod.name] = n.array(r[i])
                 self.y['omega_'+bod.name] = n.array(v[i])
-                self.y['KE_'+bod.name] += n.array(M[i]) * n.array(v[i])**2
+                self.y['KE_'+bod.name] += 0.5* n.array(M[i]) * n.array(v[i])**2
                 i = i + 1
             except AttributeError:
                 pass
-            
+
+            self.y['E_'+bod.name] = self.y['KE_'+bod.name] \
+                                    + self.y['PE_'+bod.name]            
             self.y['KE'] += self.y['KE_'+bod.name]
             self.y['PE'] += self.y['PE_'+bod.name]
             self.y['E'] += self.y['E_'+bod.name]
                 
         return self.y
+
+
+    def analyze(self):
+        try:
+            y = self.y
+        except:
+            print("Simulation cannot be analyzed before being run!")
+            return
+        
+        dofs = [str(type(dof)) for dof in self.basis]
+        
+        for dof in dofs:
+            p.plot(y['t'],y[dof])
+        p.xlabel('Time (s)')
+        p.title('Generalized coordinates over time')
+        p.legend(dofs)
+        p.figure()
+        
+        for bod in self.bods:
+            p.plot(y['t'],y['KE_'+bod.name])
+        p.gca().set_color_cycle(None)
+        for bod in self.bods:
+            p.plot(y['t'],y['PE_'+bod.name], '--')
+        p.plot(y['t'],y['E'])
+        p.xlabel('Time (s)')
+        p.ylabel('Energy (J)')
+        p.title('Energies over time')
+        p.legend(['KE ' + bod.name for bod in self.bods] + \
+                 ['PE ' + bod.name for bod in self.bods] + \
+                 ['Total Energy'])
+        p.figure()
+
+        for bod in self.bods:
+            p.plot(y['r_'+bod.name][0], y['r_'+bod.name][1], '--')
+        p.gca().set_color_cycle(None)
+        for bod in self.bods:
+            p.plot(y['r_'+bod.name][0][-1], y['r_'+bod.name][1][-1], 'o')
+        p.xlabel('Distance (m)')
+        p.ylabel('Distance (m)')
+        p.title('Body Trajectories')
+        p.legend([bod.name for name in self.bods])
+        p.show()
 
 
 
