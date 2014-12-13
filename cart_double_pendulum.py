@@ -1,5 +1,4 @@
 from pysics import *
-from matplotlib.pyplot import *
 
 mc = 1
 mp = 1
@@ -9,7 +8,6 @@ r = 1
 sim = Sim2D()
 sim.Gravity([0,-9.81])
 
-#
 x, th1, th2 = sim.DOF('x','th1','th2')
 
 cart = sim.PointMass('cart', mc, [x,0])
@@ -21,24 +19,21 @@ sim.place({x: (0,0), th1: (1,0), th2: (0.5,0)})
 
 y = sim.run([0, 1.45, 0.01])
 
-
-plot(y['r_cart'][0], y['r_cart'][1], 'b--')
-plot(y['r_cart'][0][-1], y['r_cart'][1][-1], 'bo')
-plot(y['r_p1'][0], y['r_p1'][1], 'g--')
-plot(y['r_p1'][0][-1], y['r_p1'][1][-1], 'go')
-plot((y['r_cart'][0][-1],y['r_p1'][0][-1]),
-     (y['r_cart'][1][-1],y['r_p1'][1][-1]), 'k-')
-plot(y['r_p2'][0], y['r_p2'][1], 'r--')
-plot(y['r_p2'][0][-1], y['r_p2'][1][-1], 'ro')
-plot((y['r_p1'][0][-1],y['r_p2'][0][-1]),
-     (y['r_p1'][1][-1],y['r_p2'][1][-1]), 'k-')
-title('Double Pendulum on a Track with Drag')
-ylim([-2,0.2])
-xlim([-0.4,1.8])
-#figure()
+sim.analyze()
 
 
-#plot(y['t'],y['x'])
-#plot(y['t'],y['th1'])
-#plot(y['t'],y['th2'])
-show()
+# This plots a slightly prettier version of the trajectory
+# p.plot(y['r_cart'][0], y['r_cart'][1], 'b--')
+# p.plot(y['r_cart'][0][-1], y['r_cart'][1][-1], 'bo')
+# p.plot(y['r_p1'][0], y['r_p1'][1], 'g--')
+# p.plot(y['r_p1'][0][-1], y['r_p1'][1][-1], 'go')
+# p.plot((y['r_cart'][0][-1],y['r_p1'][0][-1]),
+#      (y['r_cart'][1][-1],y['r_p1'][1][-1]), 'k-')
+# p.plot(y['r_p2'][0], y['r_p2'][1], 'r--')
+# p.plot(y['r_p2'][0][-1], y['r_p2'][1][-1], 'ro')
+# p.plot((y['r_p1'][0][-1],y['r_p2'][0][-1]),
+#      (y['r_p1'][1][-1],y['r_p2'][1][-1]), 'k-')
+# p.title('Double Pendulum on a Track with Drag')
+# p.ylim([-2,0.2])
+# p.xlim([-0.4,1.8])
+# p.show()

@@ -3,27 +3,10 @@ import numpy as n
 from scipy.integrate import ode as scipy_ode
 
 
-def extract_variables(expression):
-    """Finds the (symbolic) variables in an expression"""
-    
-    if 'matrices' in str(type(expression)):
-        args = list(expression)
-    elif len(expression.args) == 0:
-        return {expression}
-    else:
-        args = expression.args
-
-    variables = set()
-
-    for var in args:
-        variables.update(extract_variables(var))
-        
-    return set([var for var in variables if 'number' not in str(type(var))])
-
-
-
 def odesolve(odes, boundaries, time, events=None):
-    
+    """A simple ode solver that uses scipy's 4th/5th order
+    Runge-Kutta integrator as it's workhorse.
+    """
     boundary_vars, boundary_vals = zip(*boundaries)
     
     #Set up the simulation object

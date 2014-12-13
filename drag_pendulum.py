@@ -13,7 +13,5 @@ sim.place({th:(0.1,0)})
 
 y = sim.run([0,20,0.01])
 
-
-plot(y['t'],y['th'])
-show()
+sim.analyze()
 

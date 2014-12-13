@@ -1,5 +1,4 @@
 from pysics import *
-from matplotlib.pyplot import *
 
 sim = Sim2D()
 sim.Gravity([0,-9.81])

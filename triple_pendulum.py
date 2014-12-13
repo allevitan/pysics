@@ -1,6 +1,4 @@
 from pysics import *
-from matplotlib.pyplot import *
-
 
 sim = Sim2D()
 sim.Gravity([0,-9.81])
@@ -15,8 +13,4 @@ sim.place({th1:(0.8,0), th2:(0.7,0), th3:(0.9,0)})
 
 y = sim.run([0,5,0.01])
 
-
-plot(y['t'],y['th1'])
-plot(y['t'],y['th2'])
-plot(y['t'],y['th3'])
-show()
+sim.analyze()

@@ -2,17 +2,15 @@ from __future__ import print_function, division
 import sympy as s
 from sympy.utilities import lambdify
 import numpy as n
-from numbers import Number
-from tools import *
+from odetools import odesolve
 import matplotlib.pyplot as p
-from IPython.display import display as disp
-s.init_printing()
 
 
 # We definine a universal time symbol so the end user can
 # define time-dependent constraints and generate time
 # derivatives of the degrees of freedom.
 t = s.Symbol('t', real=True)
+
 
 #
 # The following section defines the objects that represent bodies
@@ -135,7 +133,7 @@ class RigidBody2D(object):
         self.forces.append(F)
 
 
-    def Drag(self, TCd=None, RCd=None, power=1):
+    def Drag(self, TCd=0, RCd=0, power=1):
         """A convenience method to add drag to the point mass.
         """
         D = Drag2D(self, TCd, RCd, power)
@@ -178,7 +176,7 @@ def Force2D(F=[0,0], M=0):
 
 
 
-def Drag2D(bod, TCd=[0,0], RCd=0, power=1):
+def Drag2D(bod, TCd=0, RCd=0, power=1):
     """A convenience to generate drag forces. Takes:
     bod: The body experiencing the drag
     TCd: The translational drag coefficient
@@ -200,12 +198,12 @@ def Drag2D(bod, TCd=[0,0], RCd=0, power=1):
 
 
 
-
 #
 # The following section defines the object that represents an
 # entire simulation, including the tools it uses to generate
 # equations of motion.
 #
+
 
 class Sim2D(object):
     """The Sim2D object doesn't take anything in it's constructor,
@@ -286,7 +284,7 @@ class Sim2D(object):
         self.forces.append((Force2D,F,M))
 
         
-    def Drag(self, TCd=None, RCd=None, power=1):
+    def Drag(self, TCd=0, RCd=0, power=1):
         """Convenience function that adds drag to every body in the
         simulation."""
         
@@ -543,6 +541,11 @@ class Sim2D(object):
 
 
     def analyze(self):
+        """Generates three commonly wanted plots:
+        1) A plot of the trajectory taken in real space by each body
+        2) A plot of the kinetic and potential energy of each object
+        3) A plot of the generalized coordinates over time
+        """
         try:
             y = self.y
         except:
@@ -580,7 +583,7 @@ class Sim2D(object):
         p.xlabel('Distance (m)')
         p.ylabel('Distance (m)')
         p.title('Body Trajectories')
-        p.legend([bod.name for name in self.bods])
+        p.legend([bod.name for bod in self.bods])
         p.show()
 
 

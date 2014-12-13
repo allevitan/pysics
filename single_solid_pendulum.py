@@ -1,5 +1,4 @@
 from pysics import *
-from matplotlib.pyplot import *
 
 sim = Sim2D()
 sim.Gravity([0,-9.81])
@@ -10,7 +9,4 @@ sim.place({th:(0.1,0)})
 
 y = sim.run([0,5,0.01])
 
-
-plot(y['t'],y['th'])
-#plot(*y['r_pend'])
-show()
+sim.analyze()

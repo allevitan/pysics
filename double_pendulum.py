@@ -1,5 +1,4 @@
 from pysics import *
-from matplotlib.pyplot import *
 
 #Create the simulation object and define gravity
 sim = Sim2D()
@@ -22,12 +21,3 @@ y = sim.run([0,5,0.01])
 
 sim.analyze()
 
-#See what we've created
-#plot(y['t'],y['KE'])
-#plot(y['t'],y['PE'])
-#plot(y['t'],y['E'])
-#figure()
-
-#plot(y['t'],y['th1'])
-#plot(y['t'],y['th2'])
-#show()
